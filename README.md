@@ -390,6 +390,29 @@ cheapest option is the whole point of the model.
 **Dataset size:** 200 days → **76,480 rows, 13,830 decisions**, about 5.5 candidates per decision. 11 % of
 decisions have only one candidate; they're kept for training but excluded from accuracy metrics.
 
+**How 200 days become 76,480 rows.** A *day* (scenario) is one simulated working day. The training days are
+drawn by [`random_scenarios`](backend/app/ml/dataset.py) so the model sees many conditions: 6–30 technicians,
+3–8 jobs per technician, uniform or 2/3/5 hotspots, and a rare-skill boost of 0, 0.3 or 0.5. Each stage below
+filters or expands the previous one:
+
+| Stage | Count | What happens |
+|---|---|---|
+| Simulated days | 200 | Seeds 10000–10199; on average 18.8 technicians and 100 jobs per day |
+| Technicians / jobs generated | 3,757 / 20,099 | 23–214 jobs per day |
+| Jobs the teacher assigns | ≈ 14,610 (73 %) | Hungarian plans each full day; the rest can't be served in time with the right skill, so they have no label |
+| **Decisions** kept | **13,830** (94.7 % of teacher assignments) | The day is replayed in request order. If the teacher's technician isn't feasible at that point in the replay, the job is skipped |
+| **Rows** | **76,480** | One row per feasible technician per decision (≈ 5.5 each) |
+
+**Target and inputs.** Each row is one (job, candidate technician) pair:
+
+| Role | Variable | Values |
+|---|---|---|
+| **Dependent variable (y)** | `label`: did the teacher assign this technician to this job? | 1 for exactly one row per decision, 0 for the rest |
+| **Independent variables (X)** | The 19 features in §4.6 | Numeric, computed at the moment the request arrives |
+| Grouping (not a feature) | `decision_id`, `scenario_id` | Tells the ranker which rows compete; the day ID drives the train/test split |
+
+The model learns a score for each candidate such that, within one decision, the teacher's technician ranks first.
+
 ### 4.6 The 19 features, in plain words
 
 All features are computed in [`ml/features.py`](backend/app/ml/features.py), using **only information available at
@@ -413,6 +436,38 @@ decision time**. The same code runs in training and in serving, so the two can't
 
 **No IDs and no raw coordinates.** This forces the model to learn general rules instead of memorising specific
 technicians or neighbourhoods.
+
+### 4.7 Feature engineering techniques
+
+| # | Technique | Features | Why |
+|---|---|---|---|
+| 1 | **Pairwise, grouped rows** (learning-to-rank format) | All | The unit is a (job, technician) pair, grouped by decision, so the ranker compares candidates within one decision |
+| 2 | **Hard-constraint filtering before features** | All | [`feasible_candidates`](backend/app/ml/features.py) drops technicians who fail skill, level, capacity, window or shift checks. The model never sees invalid options and spends its capacity on choosing *between* valid ones |
+| 3 | **Trip simulation** | `travel_km`, `idle_min`, `start_hour` | [`evaluate_pair`](backend/app/core/constraints.py) computes haversine distance from the technician's *current* position, departure = max(free at, requested at), arrival, start = max(arrival, window opens), and idle time |
+| 4 | **Headroom features** (distance to a limit) | `slack_min`, `overskill`, `tech_capacity_left`, `tech_shift_left_min` | Differences against a limit (window close, required level, max jobs, shift end) mean the same thing at any time of day; 5 min of slack is risky whenever it happens |
+| 5 | **Live state features** | `tech_jobs_done`, `tech_capacity_left`, `tech_shift_left_min` | Read from each technician's state, which is updated after every committed job, so the same technician looks different at 09:00 and 15:00 |
+| 6 | **Within-decision relative features** | `cost_rank`, `cost_gap_to_best`, `n_feasible` | Raw cost isn't comparable across decisions. Rank (double `argsort`, stable ties) and gap to the cheapest candidate rescale it *within* the decision; `n_feasible` measures how contested the job is |
+| 7 | **Heuristic score as a feature** | `cost` | The rule-based weighted cost (§5.2) is a strong prior. The model only has to learn *when to override* it: cheapest-option top-1 0.41 → model 0.60 |
+| 8 | **Scarcity encoding instead of one-hot skills** | `job_skill_supply`, `tech_rarity` | [`FeatureContext`](backend/app/ml/features.py) computes, once per day from the roster only, the share of technicians qualified for each (skill, level), and per technician Σ(1 − share of fleet with skill), an IDF-like weight. "Rare" generalises across days; skill names don't |
+| 9 | **Plain attributes** | `priority`, `job_duration`, `window_len`, `tech_skill_level`, `tech_n_skills` | Used as-is; trees learn interactions such as priority × slack |
+
+**Leakage and consistency controls**
+- **Decision-time information only.** Day-level context comes from the technician roster, never from future jobs.
+- **One function for training and serving.** `candidate_features` is called by both
+  [`build_dataset`](backend/app/ml/dataset.py) and [`allocate_online`](backend/app/algorithms/ml_dispatcher.py),
+  so there's no train/serve skew.
+- **Teacher forcing.** During dataset building the teacher's choice is committed, so state features follow the
+  teacher's plan and labels stay consistent.
+
+**Deliberately not done**
+
+| Technique | Why not |
+|---|---|
+| Scaling | Trees don't need it; only the logistic-regression baseline uses `StandardScaler` |
+| One-hot encoding | Replaced by scarcity encoding (row 8) |
+| Imputation | Every value is computed, so nothing is missing |
+| Feature selection | 19 features is small; LightGBM samples 80 % of columns per tree, and importance is reported instead |
+| Hand-made interactions | Trees learn them |
 
 ---
 
@@ -562,6 +617,53 @@ result, not a contradiction.
 | Explanations | LightGBM's native exact TreeSHAP (`pred_contrib=True`), no extra dependency |
 | Latency | about 1.5–2.3 ms per request including SHAP (single-threaded: candidate sets are tiny) |
 | Retrain | `python -m app.ml.train`; seeded, so identical metrics every time |
+
+### 7.5 Training pipeline, end to end: from data to saved model
+
+`python -m app.ml.train --n-scenarios 200 --seed 10000` runs every step below in about 16 s
+([`ml/train.py`](backend/app/ml/train.py)).
+
+1. **Generate days.** 200 seeded random days (§4.5).
+2. **Split by day, first.** A seeded permutation puts 160 days in training and 40 in test. An `assert` fails if any
+   day appears on both sides. Test days are never used for training or model selection.
+3. **Label with the teacher.** Hungarian solves each full day and records the technician chosen for each job.
+4. **Replay and build rows.** Each day is replayed in request order. For every job: filter the feasible technicians,
+   compute the 19 features, label the teacher's choice 1, then commit the teacher's choice (teacher forcing).
+   Result: 13,830 decisions, 76,480 rows.
+5. **Try three models.**
+
+   | Model | Type | Settings |
+   |---|---|---|
+   | Logistic regression | Linear baseline, pointwise | `StandardScaler` + `LogisticRegression(max_iter=2000)` |
+   | LightGBM classifier | Pointwise trees | 300 trees, learning rate 0.05, 31 leaves, 80 % row and column sampling |
+   | LightGBM ranker | Listwise, `lambdarank` | Same settings, plus group sizes so each decision is ranked as a unit |
+
+6. **Cross-validate on the training days.** `GroupKFold(3)` grouped by day ([`ml/evaluate.py`](backend/app/ml/evaluate.py)):
+
+   | Model | CV AUC | CV top-1 |
+   |---|---|---|
+   | Logistic regression | 0.858 | 0.574 |
+   | LightGBM classifier | **0.879** | 0.584 |
+   | **LightGBM ranker** | 0.832 | **0.600** |
+   | Cheapest-option baseline | – | 0.394 |
+
+7. **Select and refit.** The model with the best CV top-1 (the ranker) is retrained on all 160 training days.
+8. **Test once.** Ranking metrics on the 40 held-out days: top-1 0.602 against 0.409 for the cheapest option. CV and
+   test agree, so there's no over-fitting.
+9. **Business evaluation.** Full-day simulations on the 40 test days, Hungarian vs ML (§9). Here the model's own
+   choices drive the day, with no teacher forcing, so one different pick changes every later state. That's why
+   assignment agreement is only 38 % even though top-1 is 60 %.
+10. **Explain.** Global gain importance, per-decision TreeSHAP contributions (top 5 shown in the Job Inspector), and
+    a softmax over candidate scores as confidence ([`ml/scorer.py`](backend/app/ml/scorer.py)).
+11. **Save.** Two files in [`backend/models/`](backend/models):
+    - `scorer.joblib`: a `Scorer` wrapper (model kind, trained model, feature names, model card) saved with `joblib`,
+      exposing one API (`score`, `confidence`, `contributions`) for all three model types.
+    - `model_card.json`: data sizes, split, seed, CV and test metrics, business results, feature importance, intended
+      use and limitations.
+12. **Load and serve.** [`get_scorer`](backend/app/ml/registry.py) loads the model once and caches it. If the file is
+    missing, or was saved with incompatible library versions, it trains a quick 60-day model instead.
+    [`allocate_online`](backend/app/algorithms/ml_dispatcher.py) then filters, featurises, scores, picks the top
+    candidate, records the explanation and commits it for each request.
 
 ---
 
