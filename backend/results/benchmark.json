@@ -1,0 +1,117 @@
+{
+  "balanced": {
+    "hungarian": {
+      "fulfillment_rate": 83.0,
+      "priority_weighted_fulfillment": 86.1129081570258,
+      "high_priority_fulfillment": 89.46803196803197,
+      "avg_travel_km": 8.370876430572228,
+      "avg_idle_min": 44.884719487795124,
+      "workload_std": 0.763144940574198,
+      "runtime_ms": 4.802719999133842,
+      "ms_per_job": 0.08004533331889736
+    },
+    "ml": {
+      "fulfillment_rate": 84.0,
+      "priority_weighted_fulfillment": 83.77458793635265,
+      "high_priority_fulfillment": 84.39985014985015,
+      "avg_travel_km": 8.332866736185384,
+      "avg_idle_min": 39.621014260249545,
+      "workload_std": 1.1487754873918834,
+      "runtime_ms": 101.47484000044642,
+      "ms_per_job": 1.6912473333407736
+    },
+    "agreement": 0.42969187675070025
+  },
+  "scarce": {
+    "hungarian": {
+      "fulfillment_rate": 50.44444444444444,
+      "priority_weighted_fulfillment": 60.07368232892168,
+      "high_priority_fulfillment": 80.05952380952381,
+      "avg_travel_km": 6.838097369720859,
+      "avg_idle_min": 20.812058109167555,
+      "workload_std": 0.8678220380216874,
+      "runtime_ms": 6.763320000754902,
+      "ms_per_job": 0.07514800000838781
+    },
+    "ml": {
+      "fulfillment_rate": 52.222222222222214,
+      "priority_weighted_fulfillment": 50.50055825962562,
+      "high_priority_fulfillment": 48.69047619047619,
+      "avg_travel_km": 10.295047041062801,
+      "avg_idle_min": 6.916439975845411,
+      "workload_std": 0.9276708886153904,
+      "runtime_ms": 92.73201999967569,
+      "ms_per_job": 1.0303557777741743
+    },
+    "agreement": 0.2686491045442551
+  },
+  "clustered": {
+    "hungarian": {
+      "fulfillment_rate": 77.5,
+      "priority_weighted_fulfillment": 84.40034896011592,
+      "high_priority_fulfillment": 92.94444444444443,
+      "avg_travel_km": 5.1031685912448195,
+      "avg_idle_min": 31.00614284713465,
+      "workload_std": 0.6887171006210547,
+      "runtime_ms": 7.27605999854859,
+      "ms_per_job": 0.09095074998185737
+    },
+    "ml": {
+      "fulfillment_rate": 80.75,
+      "priority_weighted_fulfillment": 80.62910476067893,
+      "high_priority_fulfillment": 78.01767676767676,
+      "avg_travel_km": 5.982166584037783,
+      "avg_idle_min": 23.303454573418556,
+      "workload_std": 1.0281217429921776,
+      "runtime_ms": 130.8160399988992,
+      "ms_per_job": 1.6352004999862402
+    },
+    "agreement": 0.3735553153585941
+  },
+  "rare_skills": {
+    "hungarian": {
+      "fulfillment_rate": 73.14285714285714,
+      "priority_weighted_fulfillment": 78.89989288478941,
+      "high_priority_fulfillment": 91.98809523809523,
+      "avg_travel_km": 8.533174083925356,
+      "avg_idle_min": 36.730751466583996,
+      "workload_std": 0.9148856490139163,
+      "runtime_ms": 9.745579999434995,
+      "ms_per_job": 0.13922257142049993
+    },
+    "ml": {
+      "fulfillment_rate": 74.0,
+      "priority_weighted_fulfillment": 74.84130764505555,
+      "high_priority_fulfillment": 77.85714285714286,
+      "avg_travel_km": 9.726137899684248,
+      "avg_idle_min": 35.51570916448726,
+      "workload_std": 1.1893549929756957,
+      "runtime_ms": 107.85102000008919,
+      "ms_per_job": 1.5407288571441313
+    },
+    "agreement": 0.43892335115864534
+  },
+  "large": {
+    "hungarian": {
+      "fulfillment_rate": 72.8,
+      "priority_weighted_fulfillment": 84.1684923668219,
+      "high_priority_fulfillment": 97.87368832719805,
+      "avg_travel_km": 3.0431073666892354,
+      "avg_idle_min": 12.167749237128465,
+      "workload_std": 0.6707712625891444,
+      "runtime_ms": 379.9557400001504,
+      "ms_per_job": 0.6332595666669174
+    },
+    "ml": {
+      "fulfillment_rate": 75.86666666666666,
+      "priority_weighted_fulfillment": 75.95416959986548,
+      "high_priority_fulfillment": 75.32447613201644,
+      "avg_travel_km": 3.991188525733824,
+      "avg_idle_min": 5.273281432508142,
+      "workload_std": 0.5086809569851042,
+      "runtime_ms": 957.3071399987384,
+      "ms_per_job": 1.5955118999978972
+    },
+    "agreement": 0.14196424734337684
+  }
+}

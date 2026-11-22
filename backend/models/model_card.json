@@ -1,0 +1,104 @@
+{
+  "model_kind": "lgbm_ranker",
+  "trained_at": "2026-11-22T13:19:04+00:00",
+  "training_seconds": 16.3,
+  "data": {
+    "n_scenarios": 200,
+    "seed": 10000,
+    "train_scenarios": 160,
+    "test_scenarios": 40,
+    "rows": 76480,
+    "decisions": 13830,
+    "teacher_coverage": 0.946611909650924,
+    "split": "by scenario (no row-level leakage)"
+  },
+  "cv": {
+    "logreg": {
+      "auc": 0.8584475936699366,
+      "top1_accuracy": 0.5741986553142892,
+      "cost_baseline_top1": 0.3939885193542773
+    },
+    "lgbm_classifier": {
+      "auc": 0.8785263998348031,
+      "top1_accuracy": 0.5836447540309747,
+      "cost_baseline_top1": 0.3939885193542773
+    },
+    "lgbm_ranker": {
+      "auc": 0.8315955302134296,
+      "top1_accuracy": 0.5995821376936848,
+      "cost_baseline_top1": 0.3939885193542773
+    }
+  },
+  "test": {
+    "auc": 0.8378522969001794,
+    "top1_accuracy": 0.6024924795874517,
+    "cost_baseline_top1": 0.4086807047700902
+  },
+  "business_eval_holdout": {
+    "hungarian": {
+      "fulfillment_rate": 73.06091085234485,
+      "priority_weighted_fulfillment": 78.31915981944432,
+      "high_priority_fulfillment": 88.03900494426212,
+      "avg_travel_km": 6.39228926911092,
+      "avg_idle_min": 38.97450140842413,
+      "utilization": 62.72252171594407,
+      "workload_std": 0.8419380441741806,
+      "runtime_ms": 15.64562500025204
+    },
+    "ml": {
+      "fulfillment_rate": 76.03806269941485,
+      "priority_weighted_fulfillment": 75.39613293885296,
+      "high_priority_fulfillment": 74.78218358622337,
+      "avg_travel_km": 7.326250449991695,
+      "avg_idle_min": 29.720933900743518,
+      "utilization": 67.17976080055243,
+      "workload_std": 1.094270850003855,
+      "runtime_ms": 173.97076000024754
+    },
+    "ml_agreement_with_hungarian": 0.38392763820213155
+  },
+  "feature_importance": {
+    "idle_min": 0.1409850183692595,
+    "travel_km": 0.13227404527276723,
+    "cost_gap_to_best": 0.10491981546131032,
+    "tech_rarity": 0.08699907746969254,
+    "slack_min": 0.0748063015137475,
+    "cost": 0.06608609861811249,
+    "overskill": 0.06365908289215223,
+    "cost_rank": 0.05983526381989606,
+    "start_hour": 0.04904882910906648,
+    "tech_jobs_done": 0.04685945811733576,
+    "tech_shift_left_min": 0.035250338227013914,
+    "tech_n_skills": 0.03058653891758,
+    "job_skill_supply": 0.024736585103709453,
+    "priority": 0.020333564548163742,
+    "tech_skill_level": 0.01767951353721264,
+    "tech_capacity_left": 0.012678634411126136,
+    "window_len": 0.01144497040957105,
+    "n_feasible": 0.011326711331387235,
+    "job_duration": 0.01049015287089571
+  },
+  "features": [
+    "travel_km",
+    "idle_min",
+    "slack_min",
+    "overskill",
+    "priority",
+    "tech_jobs_done",
+    "tech_capacity_left",
+    "tech_shift_left_min",
+    "n_feasible",
+    "cost_rank",
+    "cost_gap_to_best",
+    "cost",
+    "job_skill_supply",
+    "tech_n_skills",
+    "tech_rarity",
+    "tech_skill_level",
+    "job_duration",
+    "window_len",
+    "start_hour"
+  ],
+  "intended_use": "Rank feasible technicians for one request at a time (online dispatch). Hard constraints are enforced before scoring; the model never sees infeasible pairs.",
+  "limitations": "Trained on synthetic scenarios; quality depends on how closely the generator matches real demand. Teacher is round-based Hungarian, not a full VRP optimum."
+}

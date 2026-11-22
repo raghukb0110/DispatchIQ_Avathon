@@ -1,0 +1,2 @@
+# Python dependencies live in backend/requirements.txt (this file just points there).
+-r backend/requirements.txt
